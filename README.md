@@ -15,3 +15,4 @@ pip install subword_nmt datasets
 - Transformer trained
 - Pali formatted/preprocessed
 - Refactor preprocesssing pipeline
+- Sanskrit embeddings https://www.analyticsvidhya.com/blog/2020/01/3-important-nlp-libraries-indian-languages-python/
