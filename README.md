@@ -11,7 +11,7 @@ pip install subword_nmt datasets
 
 ### Tasks 
 - Pretrain on Marati, Odiya, or Hindi
-- Multilinguial with Ancient Greek and Pali
+- Multilingual with Ancient Greek and Pali
 - Expanding dataset size using new sources
   - Scraping internet 
 - Using novel tokenization methods
