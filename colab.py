@@ -16,40 +16,58 @@ from preprocess import preprocess_data
 from config import Config
 
 def get_batch(batch_num, dataloader):
-  data_batch = (dataloader[0][batch_num: (batch_num+Config.BATCH_SIZE)], dataloader[1][batch_num: (batch_num+Config.BATCH_SIZE)])
-  
-  max_length = 0
-  for sequence in range(len(data_batch[0])):
-    if len(data_batch[0][sequence]) > max_length:
-      max_length = len(data_batch[0][sequence])
-    if len(data_batch[1][sequence]) > max_length:
-      max_length = len(data_batch[1][sequence])
-  
-  new_x = []
-  for sequence in range(len(data_batch[0])):
-    new_seq = []  
-    for word in data_batch[0][sequence]:
-      new_seq.append(word)
-    while len(new_seq) < max_length:
-      new_seq.append(Config.PADDING_IDX)
-    new_x.append(new_seq)
+    """
+    Pulls a padded batch from the dataloader
 
-  new_y = []
-  for sequence in range(len(data_batch[1])):
-    new_seq = []  
-    for word in data_batch[1][sequence]:
-      new_seq.append(word)
-    while len(new_seq) < max_length:
-      new_seq.append(Config.PADDING_IDX)
-    new_y.append(new_seq)
-    np.array(new_y).shape
+    Parameters:
+        batch_num       Batch will start at this index; should be a multiple of the BATCH_SIZE
+        dataloader      Dataloader for the dataset. Dataset consists of (src, tgt), where
+                        src[i] translates to tgt[i]
+    """
+    data_batch = (
+            dataloader[0][batch_num: (batch_num+Config.BATCH_SIZE)],
+            dataloader[1][batch_num: (batch_num+Config.BATCH_SIZE)])
 
-  new_x = torch.as_tensor(new_x, dtype=int)
-  new_y = torch.as_tensor(new_y, dtype=int)
+    # Calculate the max sentence length over the entire batch
+    max_length = 0
+    for sequence in range(len(data_batch[0])):
+        if len(data_batch[0][sequence]) > max_length:
+            max_length = len(data_batch[0][sequence])
+        if len(data_batch[1][sequence]) > max_length:
+            max_length = len(data_batch[1][sequence])
 
-  return (new_x, new_y)
+    # Pad the ends of each source sentence to the max length
+    new_x = []
+    for sequence in range(len(data_batch[0])):
+        new_seq = []
+        for word in data_batch[0][sequence]:
+            new_seq.append(word)
+        while len(new_seq) < max_length:
+            new_seq.append(Config.PADDING_IDX)
+        new_x.append(new_seq)
+
+    # Pad the ends of each target sentence to the max length
+    new_y = []
+    for sequence in range(len(data_batch[1])):
+      new_seq = []  
+      for word in data_batch[1][sequence]:
+        new_seq.append(word)
+      while len(new_seq) < max_length:
+        new_seq.append(Config.PADDING_IDX)
+      new_y.append(new_seq)
+      np.array(new_y).shape
+
+    # Convert to pytorch tensors for training
+    new_x = torch.as_tensor(new_x, dtype=int)
+    new_y = torch.as_tensor(new_y, dtype=int)
+
+    return (new_x, new_y)
 
 def shuffled_copies(a, b):
+    """
+    Shuffle a and b such that a[i] and b[i] are
+    paired after the shuffle
+    """
     assert len(a) == len(b)
     p = np.random.permutation(len(a))
     return a[p], b[p]
