@@ -1,4 +1,5 @@
 import torch
+from config import Config
 import torch.nn as nn
 from torch.nn.modules import dropout
 from torch.nn.utils.rnn import pad_sequence
@@ -19,146 +20,9 @@ from torch.autograd import Variable
 from itertools import chain
 from string import ascii_lowercase, ascii_uppercase
 from datasets import load_dataset
+from model import Transformer
 
-class Config():
-    NUM_EPOCHS = 100
-    LEARNING_RATE = 0.001
-    BATCH_SIZE = 10
-    VOCAB_SIZE = 10735
-    EMBEDDING_SIZE = 512
-    D_MODEL = 512
-    NUM_HEADS = 8
-    FEED_FORWARD_DIM = 1024
-    NUM_LAYERS = 6
-    DROPOUT = 0.1
-    DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    PADDING_IDX = 10732
-    OUT_DIR = 'output'
-    CHECKPOINT_PATH = 'checkpoint_200_samples.pth'
-    LOAD_MODEL = False
-
-class PositionalEncoding(nn.Module):
-    def __init__(self, d_model, dropout=0.1, max_len=500):
-        super(PositionalEncoding, self).__init__()
-        self.dropout = nn.Dropout(p=dropout)
-        self.scale = nn.Parameter(torch.ones(1))
-
-        pe = torch.zeros(Config.BATCH_SIZE, max_len, d_model)
-        position = torch.arange(0, max_len).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, d_model, 2) *
-                             -(math.log(10000.0) / d_model))
-        pe[:, :, 0::2] = torch.sin(position * div_term)
-        pe[:, :, 1::2] = torch.cos(position * div_term)
-
-        # pe = torch.zeros(max_len, d_model)
-        # position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
-        # div_term = torch.exp(torch.arange(
-        #     0, d_model, 2).float() * (-math.log(10000.0) / d_model))
-        # pe[:, 0::2] = torch.sin(position * div_term)
-        # pe[:, 1::2] = torch.cos(position * div_term)
-        # pe = pe.unsqueeze(0).transpose(0, 1)
-        self.register_buffer('pe', pe)
-
-    def forward(self, x):
-        x = x + self.scale * self.pe[:, :x.size(1)]
-        return x
   
-class Transformer(nn.Module):
-    def __init__(
-        self,
-        embedding_size, 
-        vocab_size,
-        d_model,
-        nhead,
-        dim_feedforward,
-        dropout,
-        device
-    ):
-        #embedding
-        super(Transformer, self).__init__()
-        self.d_model = d_model
-        self.device = device
-        self.src_word_embedding = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embedding_size, padding_idx=Config.PADDING_IDX)
-        self.src_pos_encoder = PositionalEncoding(d_model=d_model, dropout=dropout)
-        
-        self.trg_word_embedding = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embedding_size, padding_idx=Config.PADDING_IDX)
-        self.trg_pos_encoder = PositionalEncoding(d_model=d_model, dropout=dropout)
-        
-        #transformer
-        self.transformer = nn.Transformer(
-            d_model=d_model, 
-            nhead=nhead,
-            num_encoder_layers=Config.NUM_LAYERS, 
-            num_decoder_layers=Config.NUM_LAYERS, 
-            dim_feedforward=dim_feedforward, 
-            dropout=dropout, 
-            batch_first=True, 
-            device=Config.DEVICE
-        )
-            
-        self.linear = nn.Linear(in_features=embedding_size, out_features=vocab_size)
-        self.dropout = nn.Dropout(dropout)
-        self.softmax = nn.Softmax(dim=-1)
-    
-    def src_mask(self, src):
-        src_mask = src == Config.PADDING_IDX
-        return src_mask
-
-    def make_trg_mask(self, trg):
-        trg_mask = trg != Config.PADDING_IDX
-        return trg_mask
-
-    def generate_square_subsequent_mask(self, size): # Generate mask covering the top right triangle of a matrix
-        mask = (torch.triu(torch.ones(size, size)) == 1).transpose(0, 1)
-        mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
-        return mask
-
-    def forward(self, src, trg):
-        batch_size, src_seq_length  = src.shape
-        batch_size, trg_seq_length = trg.shape
-        
-        # src_pe = torch.zeros(batch_size, src_seq_length, self.d_model)
-        # src_position = torch.arange(0, src_seq_length).unsqueeze(1)
-        # src_div_term = torch.exp(torch.arange(0, self.d_model, 2) *
-        #                      -(math.log(10000.0) / self.d_model))
-        # src_pe[:, :, 0::2] = torch.sin(src_position * src_div_term)
-        # src_pe[:, :, 1::2] = torch.cos(src_position * src_div_term)
-
-        # trg_pe = torch.zeros(batch_size, src_seq_length, self.d_model)
-        # trg_position = torch.arange(0, src_seq_length).unsqueeze(1)
-        # trg_div_term = torch.exp(torch.arange(0, self.d_model, 2) *
-        #                      -(math.log(10000.0) / self.d_model))
-        # trg_pe[:, :, 0::2] = torch.sin(trg_position * trg_div_term)
-        # trg_pe[:, :, 1::2] = torch.cos(trg_position * trg_div_term)
-        
-        #source and target position    
-        embed_src = self.dropout((self.src_word_embedding(src)))
-        embed_src = self.dropout(self.src_pos_encoder(embed_src))
-
-        embed_trg = self.dropout((self.trg_word_embedding(trg)))
-        embed_trg = self.dropout(self.trg_pos_encoder(embed_src))
-        
-        #source and target mask
-        src_key_padding_mask = self.src_mask(src)
-        trg_key_padding_mask = self.src_mask(trg)
-        trg_mask = self.transformer.generate_square_subsequent_mask(trg_seq_length).to(Config.DEVICE)
-        
-        out = self.transformer(
-            src=embed_src, 
-            tgt=embed_trg,
-            src_mask=None,
-            tgt_mask=trg_mask, 
-            memory_mask=None,
-            src_key_padding_mask=src_key_padding_mask,
-            tgt_key_padding_mask=trg_key_padding_mask,
-            memory_key_padding_mask=src_key_padding_mask 
-        )
-
-        out = self.linear(out)
-        
-        return out
-
-
 def generate_vocab(src_file, trg_file):
     """
     Uses byte-pair encoding to build a vocabulary from the corpus
@@ -442,8 +306,6 @@ def one_epoch(model, dataloader, running_loss, writer, loss_function, epoch, sta
 
           # model_input = torch.cat((input, extra_input_padding), dim=1)
           model_target = torch.cat((bos_target_padding, target), dim=1)[:, :-1]
-          print(model_target)
-          print(input)
  
           model_output = model(input.to(Config.DEVICE), model_target.to(Config.DEVICE)).to(Config.DEVICE)
             
