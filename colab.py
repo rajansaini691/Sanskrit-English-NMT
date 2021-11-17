@@ -72,7 +72,12 @@ def shuffled_copies(a, b):
     p = np.random.permutation(len(a))
     return a[p], b[p]
 
-def create_config():
+def create_and_write_transformer_config():
+    """
+    Write the transformer's configuration parameters to ./.out/transformer_config.json
+    Contains dataset information, vocab size, and learning rate. All information comes from
+    the Config in config.py.
+    """
     config = dict()
 
     config['data_dir'] = 'output'
@@ -104,7 +109,21 @@ def create_config():
       json.dump(config, outfile)
 
 
-def one_epoch(model, dataloader, running_loss, writer, loss_function, epoch, start_batch, optimizer, train):
+def one_epoch(model, dataloader, writer, loss_function, epoch, start_batch, optimizer, train):
+    """
+    Run the model through a single pass through the dataset defined by the dataloader
+
+    model - The model being trained. Inherits torch.nn.Module
+    dataloader - Encodes the dataset
+    writer - SummaryWriter for Tensorboard
+    loss_function - Pytorch loss function, like cross entropy
+    epoch - Current epoch number, for printing status
+    start_batch - (integer) Where to start the epoch (indexes the dataset)
+    optimizer - Pytorch optimizer (like Adam)
+    train - If set to True: will train on the dataset, update parameters, and save checkpoints.
+            Otherwise, will run model over dataset without training and report loss
+            (used for validation)
+    """
     if train == True:
       model.train()
     else:
@@ -113,62 +132,61 @@ def one_epoch(model, dataloader, running_loss, writer, loss_function, epoch, sta
     update = 0
     number_exeptions = 0
     loss = 0
+    running_loss = 0
 
     for index in range(start_batch, 200, Config.BATCH_SIZE):
-
         if train:
-          print(f"[Training Epoch] {epoch}/{Config.NUM_EPOCHS - 1}, Batch Number: {index}/{len(dataloader[0])}")
+            print(f"[Training Epoch] {epoch}/{Config.NUM_EPOCHS - 1}, Batch Number: {index}/{len(dataloader[0])}")
         else:
-          print(f"[Validation Epoch] {epoch}/{Config.NUM_EPOCHS - 1}, Validating: {index}/{len(dataloader[0])}")
+            print(f"[Validation Epoch] {epoch}/{Config.NUM_EPOCHS - 1}, Validating: {index}/{len(dataloader[0])}")
         
         try:
-          loss = 0
-          input, target = get_batch(index, dataloader)
+            loss = 0
+            source, target = get_batch(index, dataloader)
 
-          # extra_input_padding = torch.full((Config.BATCH_SIZE, 1), Config.PADDING_IDX, dtype=int)
-          bos_target_padding = torch.full((Config.BATCH_SIZE, 1), 1, dtype=int)
+            bos_target_padding = torch.full((Config.BATCH_SIZE, 1), 1, dtype=int)
 
-          # model_input = torch.cat((input, extra_input_padding), dim=1)
-          model_target = torch.cat((bos_target_padding, target), dim=1)[:, :-1]
- 
-          model_output = model(input.to(Config.DEVICE), model_target.to(Config.DEVICE)).to(Config.DEVICE)
-            
-          loss_output = model_output.reshape(-1, model_output.shape[2])
-          loss_target = target.reshape(-1)
+            model_target = torch.cat((bos_target_padding, target), dim=1)[:, :-1]
 
-          loss = (loss_function(loss_output.to(Config.DEVICE), loss_target.to(Config.DEVICE)))
+            model_output = model(source.to(Config.DEVICE), model_target.to(Config.DEVICE))
+            model_output = model_output.to(Config.DEVICE)
 
-          if train:
-            optimizer.zero_grad()
-            loss.backward()        
-            optimizer.step()
+            loss_output = model_output.reshape(-1, model_output.shape[2])
+            loss_target = target.reshape(-1)
+
+            loss = (loss_function(loss_output.to(Config.DEVICE), loss_target.to(Config.DEVICE)))
+
+            if train:
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
 
         except Exception as e:
-          number_exeptions += 1
-          print('[EXCEPTION]', e)
-          print('Memory', torch.cuda.memory_allocated(Config.DEVICE))
-          print('Number Exceptions', number_exeptions)
-          torch.cuda.empty_cache()
-          continue
+            number_exeptions += 1
+            print('[EXCEPTION]', e)
+            print('Memory', torch.cuda.memory_allocated(Config.DEVICE))
+            print('Number Exceptions', number_exeptions)
+            torch.cuda.empty_cache()
+            continue
 
         update += 1
         running_loss += loss.item()
-        
-        #update tensorboard and save model
+
+        # update tensorboard and save model
         if update == 10:    # every 10 mini-batches
             running_avg = running_loss / 10
             graph = ''
             if train:
-              checkpoint = {
-                  "epoch":epoch,
-                  "batch":index,
-                  "model_state":model.state_dict(),
-                  "optim_state":optimizer.state_dict()
-              }
-              torch.save(checkpoint, os.path.join(Config.OUT_DIR, Config.CHECKPOINT_PATH))
-              graph = 'training loss'
+                checkpoint = {
+                    "epoch":epoch,
+                    "batch":index,
+                    "model_state":model.state_dict(),
+                    "optim_state":optimizer.state_dict()
+                }
+                torch.save(checkpoint, os.path.join(Config.OUT_DIR, Config.CHECKPOINT_PATH))
+                graph = 'training loss'
             else:
-              graph = 'validation loss'
+                graph = 'validation loss'
             writer.add_scalar(graph,
                             running_avg,
                             epoch * len(dataloader) + index)
@@ -201,7 +219,7 @@ model = Transformer(
     Config.DEVICE,
 ).to(Config.DEVICE)
 
-create_config()
+create_and_write_transformer_config()
 
 optimizer = optim.Adam(model.parameters(), lr=Config.LEARNING_RATE)
 loss_function = nn.CrossEntropyLoss(ignore_index=Config.PADDING_IDX)
@@ -209,30 +227,30 @@ start_epoch = 0
 start_batch = 0
 
 if Config.LOAD_MODEL:
-  checkpoint = torch.load(os.path.join(Config.OUT_DIR, Config.CHECKPOINT_PATH), map_location=Config.DEVICE)
+    checkpoint = torch.load(os.path.join(Config.OUT_DIR, Config.CHECKPOINT_PATH),
+                            map_location=Config.DEVICE)
 
-  start_batch = checkpoint["batch"]
-  start_epoch = checkpoint["epoch"]  
-  model.load_state_dict(checkpoint["model_state"])
-  optimizer.load_state_dict(checkpoint["optim_state"])
+    start_batch = checkpoint["batch"]
+    start_epoch = checkpoint["epoch"]
+    model.load_state_dict(checkpoint["model_state"])
+    optimizer.load_state_dict(checkpoint["optim_state"])
 
 pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 print("Number Parameters:", pytorch_total_params)
 
-#tensorboard
+# Tensorboard
 writer = SummaryWriter("runs")
-
-running_loss = 0.0
-running_val_loss = 0.0
 
 for epoch in range(start_epoch, Config.NUM_EPOCHS):
     print(f"[Epoch] {epoch}/{Config.NUM_EPOCHS - 1}")
-    
-    training = (torch.load(os.path.join(Config.OUT_DIR, 'train_data_eng.pth')), torch.load(os.path.join(Config.OUT_DIR, 'train_data_san.pth'))) #shuffled_copies(training_dataloader[0], training_dataloader[1])
-    validation = (torch.load(os.path.join(Config.OUT_DIR, 'valid_data_eng.pth')), torch.load(os.path.join(Config.OUT_DIR, 'valid_data_san.pth')))
-    
-    one_epoch(model, training, running_loss, writer, loss_function, epoch, start_batch, optimizer, train=True)
-    one_epoch(model, validation, running_val_loss, writer, loss_function, epoch, start_batch, optimizer, train=False)
-    
+
+    training = (torch.load(os.path.join(Config.OUT_DIR, 'train_data_eng.pth')),
+                torch.load(os.path.join(Config.OUT_DIR, 'train_data_san.pth')))
+    validation = (torch.load(os.path.join(Config.OUT_DIR, 'valid_data_eng.pth')),
+                    torch.load(os.path.join(Config.OUT_DIR, 'valid_data_san.pth')))
+
+    one_epoch(model, training, writer, loss_function, epoch, start_batch, optimizer, train=True)
+    one_epoch(model, validation, writer, loss_function, epoch, start_batch, optimizer, train=False)
+
     start_batch = 0
-    
+
