@@ -197,7 +197,7 @@ def one_epoch(model, dataloader, writer, loss_function, epoch, start_batch, opti
 
 # Initialize out dir
 if not os.path.exists(Config.OUT_DIR):
-    os.path.mkdir(Config.OUT_DIR)
+    os.mkdir(Config.OUT_DIR)
 
 print('Device:', Config.DEVICE)
 
