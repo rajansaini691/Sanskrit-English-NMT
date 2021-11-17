@@ -4,6 +4,9 @@ from config import Config
 from itertools import chain
 from string import ascii_lowercase, ascii_uppercase
 import numpy as np
+import subword_nmt
+from subword_nmt.learn_bpe import learn_bpe
+from subword_nmt.apply_bpe import BPE
 
 def generate_vocab(src_file, trg_file):
     """
