@@ -58,7 +58,6 @@ def generate_data_file(data, dtype):
 
     return eng, san
 
-
 def tokenize_dataset(infile, codes_file, prefix=""):
     """
     Use a vocabulary to tokenize the dataset
@@ -193,5 +192,3 @@ def preprocess_data(train_data, valid_data, test_data):
     np.save(os.path.join(Config.OUT_DIR, "san_vocab_size"), len(san_token_dict))
 
     return train_data_eng, train_data_san, valid_data_eng, valid_data_san, test_data_eng, test_data_san
-
-

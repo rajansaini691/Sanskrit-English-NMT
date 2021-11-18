@@ -15,6 +15,37 @@ from model import Transformer
 from preprocess import preprocess_data
 from config import Config
 
+def get_batch_seq(batch_num, dataloader):
+    '''
+    Takes in a data loader and outputs a tuple (src, trg) of shape [sequence, batch]
+    '''
+    
+    data_batch = (
+        dataloader[0][batch_num: (batch_num+Config.BATCH_SIZE)],
+        dataloader[1][batch_num: (batch_num+Config.BATCH_SIZE)])
+    
+    features = torch.nn.utils.rnn.pad_sequence(data_batch[0], batch_first=True, padding_value=Config.PADDING_IDX)
+    labels = torch.nn.utils.rnn.pad_sequence(data_batch[1], batch_first=True, padding_value=Config.PADDING_IDX)
+    
+    source = None
+    for src in features:
+        if type(source) == type(None):
+            source = np.array([src.numpy()]).T
+        else:
+            source = np.concatenate((source, np.array([src.numpy()]).T), axis=1)  
+    
+    target = None
+    for trg in labels:
+        if type(target) == type(None):
+            target = np.array([trg.numpy()]).T
+        else:
+            target = np.concatenate((target, np.array([trg.numpy()]).T), axis=1)
+    
+    source = torch.as_tensor(source)#[torch.as_tensor(arr) for arr in source])
+    target = torch.as_tensor(target)#[torch.as_tensor(arr) for arr in target])
+    
+    return source, target
+
 def get_batch(batch_num, dataloader):
     """
     Pulls a padded batch from the dataloader
@@ -27,7 +58,6 @@ def get_batch(batch_num, dataloader):
     data_batch = (
             dataloader[0][batch_num: (batch_num+Config.BATCH_SIZE)],
             dataloader[1][batch_num: (batch_num+Config.BATCH_SIZE)])
-
     # Calculate the max sentence length over the entire batch
     max_length = 0
     for sequence in range(len(data_batch[0])):
@@ -72,44 +102,7 @@ def shuffled_copies(a, b):
     p = np.random.permutation(len(a))
     return a[p], b[p]
 
-def create_and_write_transformer_config():
-    """
-    Write the transformer's configuration parameters to ./.out/transformer_config.json
-    Contains dataset information, vocab size, and learning rate. All information comes from
-    the Config in config.py.
-    """
-    config = dict()
-
-    config['data_dir'] = 'output'
-
-    config['dataset_limit'] = None
-    config["dataset_limit"] = None
-    config["print_every"] = 1
-    config["save_every"] = 1
-
-    config["vocabulary_size"] = Config.VOCAB_SIZE
-    config["share_dictionary"] = False
-    config["positional_encoding"] = True
-
-    config["d_model"] = Config.D_MODEL
-    config["layers_count"] = Config.NUM_LAYERS
-    config["heads_count"] = Config.NUM_HEADS
-    config["d_ff"] = Config.FEED_FORWARD_DIM
-    config["dropout_prob"] = Config.DROPOUT
-
-    config["label_smoothing"] = 0.1
-    config["optimizer"] = "Adam"
-    config["lr"] = Config.LEARNING_RATE
-    config["clip_grads"] = True
-
-    config["batch_size"] = Config.BATCH_SIZE
-    config["epochs"] = Config.NUM_EPOCHS
-
-    with open(os.path.join(Config.OUT_DIR, "transformer_config.json"), "w") as outfile:
-      json.dump(config, outfile)
-
-
-def one_epoch(model, dataloader, writer, loss_function, epoch, start_batch, optimizer, train):
+def one_epoch(model, dataloader, writer, criterion, epoch, start_batch, optimizer, train):
     """
     Run the model through a single pass through the dataset defined by the dataloader
 
@@ -140,34 +133,39 @@ def one_epoch(model, dataloader, writer, loss_function, epoch, start_batch, opti
         else:
             print(f"[Validation Epoch] {epoch}/{Config.NUM_EPOCHS - 1}, Validating: {index}/{len(dataloader[0])}")
         
-        try:
-            loss = 0
-            source, target = get_batch(index, dataloader)
+        # try:
+        loss = 0
+        source, target = get_batch_seq(index, dataloader)
+        
+        source, target = source.to(Config.DEVICE), source.to(Config.DEVICE)
+        
+        output = model(source, target[:-1,:])
 
-            bos_target_padding = torch.full((Config.BATCH_SIZE, 1), 1, dtype=int)
+        # bos_target_padding = torch.full((Config.BATCH_SIZE, 1), 1, dtype=int)
 
-            model_target = torch.cat((bos_target_padding, target), dim=1)[:, :-1]
+        # model_target = torch.cat((bos_target_padding, target), dim=1)[:, :-1]
 
-            model_output = model(source.to(Config.DEVICE), model_target.to(Config.DEVICE))
-            model_output = model_output.to(Config.DEVICE)
+        # model_output = model(source.to(Config.DEVICE), model_target.to(Config.DEVICE))
+        # model_output = model_output.to(Config.DEVICE)
 
-            loss_output = model_output.reshape(-1, model_output.shape[2])
-            loss_target = target.reshape(-1)
+        # loss_output = model_output.reshape(-1, model_output.shape[2])
+        # loss_target = target.reshape(-1)
+        loss = criterion(output.transpose(0, 1).transpose(1, 2), target[1:,:].transpose(0, 1))
+        # loss = (criterion(output.to(Config.DEVICE), target[1:, :].to(Config.DEVICE)))
 
-            loss = (loss_function(loss_output.to(Config.DEVICE), loss_target.to(Config.DEVICE)))
+        if train:
+            optimizer.zero_grad()
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            optimizer.step()
 
-            if train:
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-
-        except Exception as e:
-            number_exeptions += 1
-            print('[EXCEPTION]', e)
-            print('Memory', torch.cuda.memory_allocated(Config.DEVICE))
-            print('Number Exceptions', number_exeptions)
-            torch.cuda.empty_cache()
-            continue
+        # except Exception as e:
+        #     number_exeptions += 1
+        #     print('[EXCEPTION]', e)
+        #     print('Memory', torch.cuda.memory_allocated(Config.DEVICE))
+        #     print('Number Exceptions', number_exeptions)
+        #     torch.cuda.empty_cache()
+        #     continue
 
         update += 1
         running_loss += loss.item()
@@ -187,6 +185,7 @@ def one_epoch(model, dataloader, writer, loss_function, epoch, start_batch, opti
                 graph = 'training loss'
             else:
                 graph = 'validation loss'
+            
             writer.add_scalar(graph,
                             running_avg,
                             epoch * len(dataloader) + index)
@@ -195,62 +194,60 @@ def one_epoch(model, dataloader, writer, loss_function, epoch, start_batch, opti
 
             update = 0
 
-# Initialize out dir
-if not os.path.exists(Config.OUT_DIR):
-    os.mkdir(Config.OUT_DIR)
+def train():
+    # Initialize out dir
+    if not os.path.exists(Config.OUT_DIR):
+        os.mkdir(Config.OUT_DIR)
 
-print('Device:', Config.DEVICE)
+    print('Device:', Config.DEVICE)
 
-dataset = load_dataset("rahular/itihasa")
+    dataset = load_dataset("rahular/itihasa")
 
-training_data = dataset['train']
-validation_data = dataset['validation']
-test_data = dataset['test']
+    # training_data = dataset['train']
+    # validation_data = dataset['validation']
+    # test_data = dataset['test']
 
-preprocess_data(training_data, validation_data, test_data)
+    # preprocess_data(training_data, validation_data, test_data)
 
-model = Transformer(
-    Config.EMBEDDING_SIZE,
-    Config.VOCAB_SIZE,
-    Config.D_MODEL,
-    Config.NUM_HEADS,
-    Config.FEED_FORWARD_DIM,
-    Config.DROPOUT,
-    Config.DEVICE,
-).to(Config.DEVICE)
+    model = Transformer(
+        Config.SRC_VOCAB_SIZE,
+        Config.TRG_VOCAB_SIZE,
+        Config.HIDDEN_SIZE, 
+        Config.NUM_LAYERS,
+    ).to(Config.DEVICE)
 
-create_and_write_transformer_config()
-
-optimizer = optim.Adam(model.parameters(), lr=Config.LEARNING_RATE)
-loss_function = nn.CrossEntropyLoss(ignore_index=Config.PADDING_IDX)
-start_epoch = 0
-start_batch = 0
-
-if Config.LOAD_MODEL:
-    checkpoint = torch.load(os.path.join(Config.OUT_DIR, Config.CHECKPOINT_PATH),
-                            map_location=Config.DEVICE)
-
-    start_batch = checkpoint["batch"]
-    start_epoch = checkpoint["epoch"]
-    model.load_state_dict(checkpoint["model_state"])
-    optimizer.load_state_dict(checkpoint["optim_state"])
-
-pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-print("Number Parameters:", pytorch_total_params)
-
-# Tensorboard
-writer = SummaryWriter("runs")
-
-for epoch in range(start_epoch, Config.NUM_EPOCHS):
-    print(f"[Epoch] {epoch}/{Config.NUM_EPOCHS - 1}")
-
-    training = (torch.load(os.path.join(Config.OUT_DIR, 'train_data_eng.pth')),
-                torch.load(os.path.join(Config.OUT_DIR, 'train_data_san.pth')))
-    validation = (torch.load(os.path.join(Config.OUT_DIR, 'valid_data_eng.pth')),
-                    torch.load(os.path.join(Config.OUT_DIR, 'valid_data_san.pth')))
-
-    one_epoch(model, training, writer, loss_function, epoch, start_batch, optimizer, train=True)
-    one_epoch(model, validation, writer, loss_function, epoch, start_batch, optimizer, train=False)
-
+    optimizer = optim.AdamW(model.parameters())
+    loss_function = nn.CrossEntropyLoss(ignore_index=Config.PADDING_IDX)
+    start_epoch = 0
     start_batch = 0
 
+    if Config.LOAD_MODEL:
+        checkpoint = torch.load(os.path.join(Config.OUT_DIR, Config.CHECKPOINT_PATH),
+                                map_location=Config.DEVICE)
+
+        start_batch = checkpoint["batch"]
+        start_epoch = checkpoint["epoch"]
+        model.load_state_dict(checkpoint["model_state"])
+        optimizer.load_state_dict(checkpoint["optim_state"])
+
+    pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print("Number Parameters:", pytorch_total_params)
+
+    # Tensorboard
+    writer = SummaryWriter("runs")
+
+    for epoch in range(start_epoch, Config.NUM_EPOCHS):
+        print(f"[Epoch] {epoch}/{Config.NUM_EPOCHS - 1}")
+
+        training = (torch.load(os.path.join(Config.OUT_DIR, 'train_data_eng.pth')),
+                    torch.load(os.path.join(Config.OUT_DIR, 'train_data_san.pth')))
+        validation = (torch.load(os.path.join(Config.OUT_DIR, 'valid_data_eng.pth')),
+                        torch.load(os.path.join(Config.OUT_DIR, 'valid_data_san.pth')))
+
+        one_epoch(model, training, writer, loss_function, epoch, start_batch, optimizer, train=True)
+        one_epoch(model, validation, writer, loss_function, epoch, start_batch, optimizer, train=False)
+
+        start_batch = 0
+
+if __name__ == '__main__':
+    train()
