@@ -38,7 +38,6 @@ class Data(torch.utils.data.Dataset):
   def __len__(self):
     return self.num_samples
 
-
 def train(model, optimizer, criterion, iterator):
     
     model.train()
@@ -78,7 +77,6 @@ def evaluate(model, criterion, iterator):
             epoch_loss += loss.item()
 
     return epoch_loss / len(iterator)
-
 
 def run_sanity_check():
     pin_memory = True

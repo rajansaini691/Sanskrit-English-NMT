@@ -20,12 +20,14 @@ def get_batch_seq(batch_num, dataloader):
     Takes in a data loader and outputs a tuple (src, trg) of shape [sequence, batch]
     '''
     
-    data_batch = (
-        dataloader[0][batch_num: (batch_num+Config.BATCH_SIZE)],
-        dataloader[1][batch_num: (batch_num+Config.BATCH_SIZE)])
+    features = dataloader[0][batch_num: (batch_num+Config.BATCH_SIZE)]
+    labels = dataloader[1][batch_num: (batch_num+Config.BATCH_SIZE)]
     
-    features = torch.nn.utils.rnn.pad_sequence(data_batch[0], batch_first=True, padding_value=Config.PADDING_IDX)
-    labels = torch.nn.utils.rnn.pad_sequence(data_batch[1], batch_first=True, padding_value=Config.PADDING_IDX)
+    labels = [torch.cat((torch.tensor([1]), label)) for label in labels] #add bos token (1)
+    labels = [torch.cat((label, torch.tensor([0]))) for label in labels] #add eos token (0)
+    
+    features = torch.nn.utils.rnn.pad_sequence(features, batch_first=True, padding_value=Config.PADDING_IDX)
+    labels = torch.nn.utils.rnn.pad_sequence(labels, batch_first=True, padding_value=Config.PADDING_IDX)
     
     source = None
     for src in features:
@@ -34,6 +36,7 @@ def get_batch_seq(batch_num, dataloader):
         else:
             source = np.concatenate((source, np.array([src.numpy()]).T), axis=1)  
     
+        
     target = None
     for trg in labels:
         if type(target) == type(None):
@@ -41,10 +44,10 @@ def get_batch_seq(batch_num, dataloader):
         else:
             target = np.concatenate((target, np.array([trg.numpy()]).T), axis=1)
     
-    source = torch.as_tensor(source)#[torch.as_tensor(arr) for arr in source])
-    target = torch.as_tensor(target)#[torch.as_tensor(arr) for arr in target])
+    source = torch.as_tensor(source)
+    target = torch.as_tensor(target)
     
-    return source, target
+    return source.to(Config.DEVICE), target.to(Config.DEVICE)
 
 def get_batch(batch_num, dataloader):
     """
@@ -127,7 +130,7 @@ def one_epoch(model, dataloader, writer, criterion, epoch, start_batch, optimize
     loss = 0
     running_loss = 0
 
-    for index in range(start_batch, 200, Config.BATCH_SIZE):
+    for index in range(start_batch, len(dataloader[0]), Config.BATCH_SIZE):
         if train:
             print(f"[Training Epoch] {epoch}/{Config.NUM_EPOCHS - 1}, Batch Number: {index}/{len(dataloader[0])}")
         else:
@@ -137,21 +140,12 @@ def one_epoch(model, dataloader, writer, criterion, epoch, start_batch, optimize
         loss = 0
         source, target = get_batch_seq(index, dataloader)
         
-        source, target = source.to(Config.DEVICE), source.to(Config.DEVICE)
-        
+        # print('src', source)
+        # print('trg', target)
+             
         output = model(source, target[:-1,:])
 
-        # bos_target_padding = torch.full((Config.BATCH_SIZE, 1), 1, dtype=int)
-
-        # model_target = torch.cat((bos_target_padding, target), dim=1)[:, :-1]
-
-        # model_output = model(source.to(Config.DEVICE), model_target.to(Config.DEVICE))
-        # model_output = model_output.to(Config.DEVICE)
-
-        # loss_output = model_output.reshape(-1, model_output.shape[2])
-        # loss_target = target.reshape(-1)
         loss = criterion(output.transpose(0, 1).transpose(1, 2), target[1:,:].transpose(0, 1))
-        # loss = (criterion(output.to(Config.DEVICE), target[1:, :].to(Config.DEVICE)))
 
         if train:
             optimizer.zero_grad()
@@ -203,11 +197,11 @@ def train():
 
     dataset = load_dataset("rahular/itihasa")
 
-    # training_data = dataset['train']
-    # validation_data = dataset['validation']
-    # test_data = dataset['test']
+    training_data = dataset['train']
+    validation_data = dataset['validation']
+    test_data = dataset['test']
 
-    # preprocess_data(training_data, validation_data, test_data)
+    preprocess_data(training_data, validation_data, test_data)
 
     model = Transformer(
         Config.SRC_VOCAB_SIZE,
