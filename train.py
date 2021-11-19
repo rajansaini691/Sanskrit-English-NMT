@@ -12,7 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 from datasets import load_dataset
 from model import Transformer
-from preprocess import preprocess_data
+from preprocess import convert_itihasa_dataset_to_tensors
 from config import Config
 
 def get_batch(batch_num, dataloader):
@@ -207,7 +207,7 @@ training_data = dataset['train']
 validation_data = dataset['validation']
 test_data = dataset['test']
 
-preprocess_data(training_data, validation_data, test_data)
+convert_itihasa_dataset_to_tensors(training_data, validation_data, test_data)
 
 model = Transformer(
     Config.EMBEDDING_SIZE,
@@ -244,10 +244,12 @@ writer = SummaryWriter("runs")
 for epoch in range(start_epoch, Config.NUM_EPOCHS):
     print(f"[Epoch] {epoch}/{Config.NUM_EPOCHS - 1}")
 
-    training = (torch.load(os.path.join(Config.OUT_DIR, 'train_data_eng.pth')),
-                torch.load(os.path.join(Config.OUT_DIR, 'train_data_san.pth')))
-    validation = (torch.load(os.path.join(Config.OUT_DIR, 'valid_data_eng.pth')),
-                    torch.load(os.path.join(Config.OUT_DIR, 'valid_data_san.pth')))
+    # TODO Use the returned values from convert_itihasa_dataset_to_tensors() rather
+    # than loading from disk like this
+    training = (torch.load(os.path.join(Config.OUT_DIR, 'itihasa_eng_train.pth')),
+                torch.load(os.path.join(Config.OUT_DIR, 'itihasa_san_train.pth')))
+    validation = (torch.load(os.path.join(Config.OUT_DIR, 'itihasa_eng_val.pth')),
+                    torch.load(os.path.join(Config.OUT_DIR, 'itihasa_san_val.pth')))
 
     one_epoch(model, training, writer, loss_function, epoch, start_batch, optimizer, train=True)
     one_epoch(model, validation, writer, loss_function, epoch, start_batch, optimizer, train=False)

@@ -6,10 +6,14 @@ Contains code for neural machine translation of Sanskrit into English.
 ## Dependencies
 
 ```
-pip install subword_nmt datasets
+pip install subword_nmt datasets pdfminer pdfminer.six
 ```
 
 ### Tasks 
+- Preprocessing refactoring
+  - [x] Make logic for tokenization more general (i.e., can be applied to more kinds of corpora)
+  - [ ] Clean up vocabulary generation logic - Should be able to create a vocab from a
+        monolingual text file and use it anywhere
 - Pretrain on Marati, Odiya, or Hindi
 - Multilingual with Ancient Greek and Pali
 - Expanding dataset size using new sources
