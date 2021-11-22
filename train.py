@@ -12,7 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 from datasets import load_dataset
 from model import Transformer
-from preprocess import convert_itihasa_dataset_to_tensors
+from preprocess import convert_itihasa_dataset_to_tensors, load_marathi_dataset
 from config import Config
 
 def get_batch(batch_num, dataloader):
@@ -207,6 +207,7 @@ training_data = dataset['train']
 validation_data = dataset['validation']
 test_data = dataset['test']
 
+load_marathi_dataset(os.path.join(Config.DATA_DIR, "en-mr"))
 convert_itihasa_dataset_to_tensors(training_data, validation_data, test_data)
 
 model = Transformer(
