@@ -5,6 +5,24 @@ Contains code for neural machine translation of Sanskrit into English.
 
 ## Dependencies
 
+### Conda
+Setup conda environment:
+```
+conda create -n py39 python=3.9 anaconda
+```
+
+Install pytorch:
+```
+conda install pytorch torchvision torchaudio cudatoolkit=10.2 -c pytorch
+```
+
+Install other dependencies
+```
+conda install tensorboard
+```
+
+### Pip
+Next, you need to install the following dependencies using `pip`.
 ```
 pip install subword_nmt datasets pdfminer pdfminer.six
 ```
@@ -12,7 +30,7 @@ pip install subword_nmt datasets pdfminer pdfminer.six
 ### Tasks 
 - Preprocessing refactoring
   - [x] Make logic for tokenization more general (i.e., can be applied to more kinds of corpora)
-  - [ ] Clean up vocabulary generation logic - Should be able to create a vocab from a
+  - [x] Clean up vocabulary generation logic - Should be able to create a vocab from a
         monolingual text file and use it anywhere
 - Pretrain on Marati, Odiya, or Hindi
 - Multilingual with Ancient Greek and Pali
