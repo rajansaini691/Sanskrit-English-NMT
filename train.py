@@ -12,7 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 from datasets import load_dataset
 from model import Transformer
-from preprocess import preprocess_data
+from preprocess import convert_itihasa_dataset_to_tensors, load_marathi_dataset
 from config import Config
 
 def get_batch_seq(batch_num, dataloader):
@@ -197,9 +197,12 @@ def train():
 
     dataset = load_dataset("rahular/itihasa")
 
-    training_data = dataset['train']
-    validation_data = dataset['validation']
-    test_data = dataset['test']
+    # training_data = dataset['train']
+    # validation_data = dataset['validation']
+    # test_data = dataset['test']
+    
+    load_marathi_dataset(os.path.join(Config.DATA_DIR, "en-mr"))
+    convert_itihasa_dataset_to_tensors(training_data, validation_data, test_data)
 
     preprocess_data(training_data, validation_data, test_data)
 
@@ -233,10 +236,12 @@ def train():
     for epoch in range(start_epoch, Config.NUM_EPOCHS):
         print(f"[Epoch] {epoch}/{Config.NUM_EPOCHS - 1}")
 
-        training = (torch.load(os.path.join(Config.OUT_DIR, 'train_data_eng.pth')),
-                    torch.load(os.path.join(Config.OUT_DIR, 'train_data_san.pth')))
-        validation = (torch.load(os.path.join(Config.OUT_DIR, 'valid_data_eng.pth')),
-                        torch.load(os.path.join(Config.OUT_DIR, 'valid_data_san.pth')))
+    # TODO Use the returned values from convert_itihasa_dataset_to_tensors() rather
+    # than loading from disk like this
+        training = (torch.load(os.path.join(Config.OUT_DIR, 'itihasa_eng_train.pth')),
+                    torch.load(os.path.join(Config.OUT_DIR, 'itihasa_san_train.pth')))
+        validation = (torch.load(os.path.join(Config.OUT_DIR, 'itihasa_eng_val.pth')),
+                    torch.load(os.path.join(Config.OUT_DIR, 'itihasa_san_val.pth')))
 
         one_epoch(model, training, writer, loss_function, epoch, start_batch, optimizer, train=True)
         one_epoch(model, validation, writer, loss_function, epoch, start_batch, optimizer, train=False)
