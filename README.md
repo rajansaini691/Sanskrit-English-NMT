@@ -22,7 +22,21 @@ pip install subword_nmt datasets pdfminer pdfminer.six
   - Sanskrit embeddings https://www.analyticsvidhya.com/blog/2020/01/3-important-nlp-libraries-indian-languages-python/
 
 ### Timeline
-#### Novemeber 22, 2021
+#### November 22, 2021
 - Transformer trained
 - Pre-training language found, formatted, and preprocessed
 - Refactor preprocesssing pipeline
+
+#### November 29, 2021
+- Have 1-2 pretrained models on pretraining data (Marathi)
+- Find multilingual dataset
+  - Ancient Greek
+  - Pali
+  - Latin (maybe) 
+- Expanding dataset size using new sources
+
+#### Final Week
+- Fine-tune multiple pretrained models 
+  - Different multiliguial combinations, and pure Sankrit
+- Evaluation/Inference (sacreBLEU)
+- Report/Presentation

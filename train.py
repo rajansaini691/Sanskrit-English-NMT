@@ -197,12 +197,11 @@ def train():
 
     dataset = load_dataset("rahular/itihasa")
 
+    # training_data = dataset['train']
+    # validation_data = dataset['validation']
+    # test_data = dataset['test']
 
-    training_data = dataset['train']
-    validation_data = dataset['validation']
-    test_data = dataset['test']
-
-    convert_itihasa_dataset_to_tensors(training_data, validation_data, test_data)
+    # convert_itihasa_dataset_to_tensors(training_data, validation_data, test_data)
     load_marathi_dataset(os.path.join(Config.DATA_DIR, "en-mr"))
 
     model = Transformer(
