@@ -16,6 +16,7 @@ class Config():
     DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     PADDING_IDX = 10999
     OUT_DIR = 'output'
+    DATA_DIR = 'data'
     CHECKPOINT_PATH = 'checkpoint.pth'
     LOAD_MODEL = False
 

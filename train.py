@@ -202,9 +202,9 @@ def train():
     # test_data = dataset['test']
     
     load_marathi_dataset(os.path.join(Config.DATA_DIR, "en-mr"))
-    convert_itihasa_dataset_to_tensors(training_data, validation_data, test_data)
+    # convert_itihasa_dataset_to_tensors(training_data, validation_data, test_data)
 
-    preprocess_data(training_data, validation_data, test_data)
+    # preprocess_data(training_data, validation_data, test_data)
 
     model = Transformer(
         Config.SRC_VOCAB_SIZE,
@@ -236,8 +236,8 @@ def train():
     for epoch in range(start_epoch, Config.NUM_EPOCHS):
         print(f"[Epoch] {epoch}/{Config.NUM_EPOCHS - 1}")
 
-    # TODO Use the returned values from convert_itihasa_dataset_to_tensors() rather
-    # than loading from disk like this
+        # TODO Use the returned values from convert_itihasa_dataset_to_tensors() rather
+        # than loading from disk like this
         training = (torch.load(os.path.join(Config.OUT_DIR, 'itihasa_eng_train.pth')),
                     torch.load(os.path.join(Config.OUT_DIR, 'itihasa_san_train.pth')))
         validation = (torch.load(os.path.join(Config.OUT_DIR, 'itihasa_eng_val.pth')),
