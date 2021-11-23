@@ -8,36 +8,26 @@ import subword_nmt
 from subword_nmt.learn_bpe import learn_bpe
 from subword_nmt.apply_bpe import BPE
 
-def generate_vocab(src_file, trg_file):
+def generate_vocab(corpus_file, path_to_codes_file):
     """
     Uses byte-pair encoding to build a vocabulary from the corpus
-    Returns a file object pointing to the generated codes file
+
+    Returns a file object pointing to the generated codes file. If the codes
+    file already exists, we assume it was precomputed, so we exit early. 
+
+    Parameters:
+        corpus_file         File-like object pointing to monolingual corpus
+        path_to_codes_file  Location to write the codes file
     """
-    path_to_codes_file_eng = "codes_file_eng"
-    path_to_codes_file_san = "codes_file_san"
+    # Check if codes file is cached
+    if os.path.exists(path_to_codes_file):
+        return open(path_to_codes_file, "r")
 
-    if not os.path.exists(Config.OUT_DIR):
-        os.makedirs(Config.OUT_DIR)
-
-    if os.path.exists(os.path.join(Config.OUT_DIR, path_to_codes_file_eng)) \
-        and os.path.exists(os.path.join(Config.OUT_DIR, path_to_codes_file_san)):
-        codes_file_eng = open(os.path.join(Config.OUT_DIR, path_to_codes_file_eng), "r")
-        codes_file_san = open(os.path.join(Config.OUT_DIR, path_to_codes_file_san), "r")
-        return codes_file_eng, codes_file_san
-
-    if os.path.exists(os.path.join(Config.OUT_DIR, 'eng_train')) \
-      and os.path.exists(os.path.join(Config.OUT_DIR, 'san_train')):
-      codes_file_eng = open(os.path.join(Config.OUT_DIR, path_to_codes_file_eng), "w")
-      codes_file_san = open(os.path.join(Config.OUT_DIR, path_to_codes_file_san), "w")
-
-      learn_bpe(src_file, codes_file_eng, 10000)
-      learn_bpe(trg_file, codes_file_san, 10000)
+    # Generate vocabulary
+    codes_file = open(path_to_codes_file, "w")
+    learn_bpe(corpus_file, codes_file, 10000)
+    return codes_file
     
-      return codes_file_eng, codes_file_san
-    
-    else:
-      raise 'No eng_train and san_train file'
-
 def generate_data_file(data, dtype):
 
     if not os.path.exists(Config.OUT_DIR):
@@ -57,7 +47,6 @@ def generate_data_file(data, dtype):
     san = open(os.path.join(Config.OUT_DIR, f'san_{dtype}'), 'r')
 
     return eng, san
-
 
 def tokenize_dataset(infile, codes_file, prefix=""):
     """
@@ -159,9 +148,8 @@ def convert_itihasa_dataset_to_tensors(itihasa_training_data, itihasa_validation
     eng_test, san_test = generate_data_file(itihasa_test_data, dtype="test")
 
     print("Generating vocabulary...")
-    # TODO Generate separate per-language vocabularies and refactor
-    # generate_vocab to be language-agnostic
-    codes_file_eng, codes_file_san = generate_vocab(eng_train, san_train)
+    codes_file_eng = generate_vocab(eng_train, os.path.join(Config.OUT_DIR, "codes_file_eng"))
+    codes_file_san = generate_vocab(san_train, os.path.join(Config.OUT_DIR, "codes_file_san"))
 
     return [
             corpus_to_tensors(eng_train, codes_file_eng, Config.OUT_DIR, "itihasa_eng_train"),
@@ -220,3 +208,22 @@ def corpus_to_tensors(corpus_file, vocab, out_dir, prefix):
     torch.save(tensors, os.path.join(Config.OUT_DIR, f"{prefix}.pth"))
 
     return tensors
+
+# FIXME Should Sanskrit and Marathi share a vocabulary? They're separate right now.
+def load_marathi_dataset(path_to_en_mr_dir):
+    """
+    Loads an english-marathi parallel dataset into two lists of aligned token vectors.
+    
+    Parameters:
+        path_to_en_mr_dir       Root of the english-marathi text. It should contain
+                                the files train.mr and train.en.
+    """
+    with open(os.path.join(path_to_en_mr_dir, "train.en"), "r") as eng_train_file:
+        with open(os.path.join(path_to_en_mr_dir, "train.mr"), "r") as mr_train_file:
+            print("Generating vocabulary for en-mr English...")
+            codes_file_eng = generate_vocab(eng_train_file, os.path.join(Config.OUT_DIR, "codes_file_eng"))
+            print("Generating vocabulary for en-mr Marathi...")
+            codes_file_mr = generate_vocab(mr_train_file, os.path.join(Config.OUT_DIR, "codes_file_mr"))
+
+            return (corpus_to_tensors(eng_train_file, codes_file_eng, Config.OUT_DIR, "samanatar_en_mr_english_full"),
+                    corpus_to_tensors(mr_train_file, codes_file_mr, Config.OUT_DIR, "samanatar_en_mr_marathi_full"))
