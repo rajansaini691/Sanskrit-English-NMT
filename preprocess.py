@@ -48,7 +48,6 @@ def generate_data_file(data, dtype):
 
     return eng, san
 
-
 def tokenize_dataset(infile, codes_file, prefix=""):
     """
     Use a vocabulary to tokenize the dataset
