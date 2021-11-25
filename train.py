@@ -195,13 +195,13 @@ def train():
 
     print('Device:', Config.DEVICE)
 
-    dataset = load_dataset("rahular/itihasa")
+    # dataset = load_dataset("rahular/itihasa")
 
     # training_data = dataset['train']
     # validation_data = dataset['validation']
     # test_data = dataset['test']
     
-    load_marathi_dataset(os.path.join(Config.DATA_DIR, "en-mr"))
+    eng_train, mar_train=load_marathi_dataset(os.path.join(Config.DATA_DIR, "en-mr"))
     # convert_itihasa_dataset_to_tensors(training_data, validation_data, test_data)
 
     # preprocess_data(training_data, validation_data, test_data)
@@ -238,13 +238,12 @@ def train():
 
         # TODO Use the returned values from convert_itihasa_dataset_to_tensors() rather
         # than loading from disk like this
-        training = (torch.load(os.path.join(Config.OUT_DIR, 'itihasa_eng_train.pth')),
-                    torch.load(os.path.join(Config.OUT_DIR, 'itihasa_san_train.pth')))
-        validation = (torch.load(os.path.join(Config.OUT_DIR, 'itihasa_eng_val.pth')),
-                    torch.load(os.path.join(Config.OUT_DIR, 'itihasa_san_val.pth')))
+        training = (eng_train, mar_train)
+        # validation = (torch.load(os.path.join(Config.OUT_DIR, 'itihasa_eng_val.pth')),
+                    # torch.load(os.path.join(Config.OUT_DIR, 'itihasa_san_val.pth')))
 
         one_epoch(model, training, writer, loss_function, epoch, start_batch, optimizer, train=True)
-        one_epoch(model, validation, writer, loss_function, epoch, start_batch, optimizer, train=False)
+        # one_epoch(model, validation, writer, loss_function, epoch, start_batch, optimizer, train=False)
 
         start_batch = 0
 

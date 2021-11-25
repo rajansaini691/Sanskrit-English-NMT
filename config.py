@@ -17,6 +17,6 @@ class Config():
     PADDING_IDX = 10999
     OUT_DIR = 'output'
     DATA_DIR = 'data'
-    CHECKPOINT_PATH = 'checkpoint.pth'
-    LOAD_MODEL = False
+    CHECKPOINT_PATH = 'checkpoint_1.pth'
+    LOAD_MODEL = True
 
