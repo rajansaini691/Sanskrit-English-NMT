@@ -136,30 +136,30 @@ def one_epoch(model, dataloader, writer, criterion, epoch, start_batch, optimize
         else:
             print(f"[Validation Epoch] {epoch}/{Config.NUM_EPOCHS - 1}, Validating: {index}/{len(dataloader[0])}")
         
-        # try:
-        loss = 0
-        source, target = get_batch_seq(index, dataloader)
-        
-        # print('src', source)
-        # print('trg', target)
-             
-        output = model(source, target[:-1,:])
+        try:
+            loss = 0
+            source, target = get_batch_seq(index, dataloader)
+            
+            # print('src', source)
+            # print('trg', target)
+                
+            output = model(source, target[:-1,:])
 
-        loss = criterion(output.transpose(0, 1).transpose(1, 2), target[1:,:].transpose(0, 1))
+            loss = criterion(output.transpose(0, 1).transpose(1, 2), target[1:,:].transpose(0, 1))
 
-        if train:
-            optimizer.zero_grad()
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-            optimizer.step()
+            if train:
+                optimizer.zero_grad()
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+                optimizer.step()
 
-        # except Exception as e:
-        #     number_exeptions += 1
-        #     print('[EXCEPTION]', e)
-        #     print('Memory', torch.cuda.memory_allocated(Config.DEVICE))
-        #     print('Number Exceptions', number_exeptions)
-        #     torch.cuda.empty_cache()
-        #     continue
+        except Exception as e:
+            number_exeptions += 1
+            print('[EXCEPTION]', e)
+            print('Memory', torch.cuda.memory_allocated(Config.DEVICE))
+            print('Number Exceptions', number_exeptions)
+            torch.cuda.empty_cache()
+            continue
 
         update += 1
         running_loss += loss.item()
