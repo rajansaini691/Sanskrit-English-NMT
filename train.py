@@ -204,7 +204,8 @@ def train():
     eng_train, mar_train=load_marathi_dataset(os.path.join(Config.DATA_DIR, "en-mr"))
     # convert_itihasa_dataset_to_tensors(training_data, validation_data, test_data)
 
-    # preprocess_data(training_data, validation_data, test_data)
+    # convert_itihasa_dataset_to_tensors(training_data, validation_data, test_data)
+    # load_marathi_dataset(os.path.join(Config.DATA_DIR, "en-mr"))
 
     model = Transformer(
         Config.SRC_VOCAB_SIZE,
