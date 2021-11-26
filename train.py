@@ -165,8 +165,8 @@ def one_epoch(model, dataloader, writer, criterion, epoch, start_batch, optimize
         running_loss += loss.item()
 
         # update tensorboard and save model
-        if update == 10:    # every 10 mini-batches
-            running_avg = running_loss / 10
+        if update == 100:    # every 10 mini-batches
+            running_avg = running_loss / 100
             graph = ''
             if train:
                 checkpoint = {
@@ -175,7 +175,7 @@ def one_epoch(model, dataloader, writer, criterion, epoch, start_batch, optimize
                     "model_state":model.state_dict(),
                     "optim_state":optimizer.state_dict()
                 }
-                torch.save(checkpoint, os.path.join(Config.OUT_DIR, Config.CHECKPOINT_PATH))
+                torch.save(checkpoint, os.path.join(Config.DRIVE_PATH, Config.CHECKPOINT_PATH))
                 graph = 'training loss'
             else:
                 graph = 'validation loss'
