@@ -18,6 +18,7 @@ class Config():
     OUT_DIR = 'output'
     DATA_DIR = 'data'
     DRIVE_PATH = 'drive/MyDrive'
-    CHECKPOINT_PATH = 'checkpoint.pth'
+    PRETRAINED_CHECKPOINT_PATH = 'pretrained_checkpoint.pth'
+    FINE_TUNED_CHECKPOINT_PATH = 'checkpoint.pth'
     LOAD_MODEL = True
 
