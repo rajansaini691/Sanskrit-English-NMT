@@ -136,30 +136,30 @@ def one_epoch(model, dataloader, writer, criterion, epoch, start_batch, optimize
         else:
             print(f"[Validation Epoch] {epoch}/{Config.NUM_EPOCHS - 1}, Validating: {index}/{len(dataloader[0])}")
         
-        # try:
-        loss = 0
-        source, target = get_batch_seq(index, dataloader)
-        
-        # print('src', source)
-        # print('trg', target)
-             
-        output = model(source, target[:-1,:])
+        try:
+            loss = 0
+            source, target = get_batch_seq(index, dataloader)
+            
+            # print('src', source)
+            # print('trg', target)
+                
+            output = model(source, target[:-1,:])
 
-        loss = criterion(output.transpose(0, 1).transpose(1, 2), target[1:,:].transpose(0, 1))
+            loss = criterion(output.transpose(0, 1).transpose(1, 2), target[1:,:].transpose(0, 1))
 
-        if train:
-            optimizer.zero_grad()
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-            optimizer.step()
+            if train:
+                optimizer.zero_grad()
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+                optimizer.step()
 
-        # except Exception as e:
-        #     number_exeptions += 1
-        #     print('[EXCEPTION]', e)
-        #     print('Memory', torch.cuda.memory_allocated(Config.DEVICE))
-        #     print('Number Exceptions', number_exeptions)
-        #     torch.cuda.empty_cache()
-        #     continue
+        except Exception as e:
+            number_exeptions += 1
+            print('[EXCEPTION]', e)
+            print('Memory', torch.cuda.memory_allocated(Config.DEVICE))
+            print('Number Exceptions', number_exeptions)
+            torch.cuda.empty_cache()
+            continue
 
         update += 1
         running_loss += loss.item()
@@ -175,7 +175,7 @@ def one_epoch(model, dataloader, writer, criterion, epoch, start_batch, optimize
                     "model_state":model.state_dict(),
                     "optim_state":optimizer.state_dict()
                 }
-                torch.save(checkpoint, os.path.join(Config.OUT_DIR, Config.CHECKPOINT_PATH))
+                torch.save(checkpoint, os.path.join(Config.OUT_DIR, Config.FINE_TUNED_CHECKPOINT_PATH))
                 graph = 'training loss'
             else:
                 graph = 'validation loss'
@@ -197,12 +197,14 @@ def train():
 
     dataset = load_dataset("rahular/itihasa")
 
-    # training_data = dataset['train']
-    # validation_data = dataset['validation']
-    # test_data = dataset['test']
+    training_data = dataset['train']
+    validation_data = dataset['validation']
+    test_data = dataset['test']
+    
+    # eng_train, mar_train=load_marathi_dataset(os.path.join(Config.DATA_DIR, "en-mr"))
 
-    # convert_itihasa_dataset_to_tensors(training_data, validation_data, test_data)
-    load_marathi_dataset(os.path.join(Config.DATA_DIR, "en-mr"))
+    eng_train, san_train, eng_val, san_val, eng_test, san_test = convert_itihasa_dataset_to_tensors(training_data, validation_data, test_data)
+    # load_marathi_dataset(os.path.join(Config.DATA_DIR, "en-mr"))
 
     model = Transformer(
         Config.SRC_VOCAB_SIZE,
@@ -217,7 +219,7 @@ def train():
     start_batch = 0
 
     if Config.LOAD_MODEL:
-        checkpoint = torch.load(os.path.join(Config.OUT_DIR, Config.CHECKPOINT_PATH),
+        checkpoint = torch.load(os.path.join(Config.OUT_DIR, Config.PRETRAINED_CHECKPOINT_PATH),
                                 map_location=Config.DEVICE)
 
         start_batch = checkpoint["batch"]
@@ -236,10 +238,8 @@ def train():
 
         # TODO Use the returned values from convert_itihasa_dataset_to_tensors() rather
         # than loading from disk like this
-        training = (torch.load(os.path.join(Config.OUT_DIR, 'itihasa_eng_train.pth')),
-                    torch.load(os.path.join(Config.OUT_DIR, 'itihasa_san_train.pth')))
-        validation = (torch.load(os.path.join(Config.OUT_DIR, 'itihasa_eng_val.pth')),
-                        torch.load(os.path.join(Config.OUT_DIR, 'itihasa_san_val.pth')))
+        training = (eng_train, san_train)
+        validation = (eng_val, san_val)
 
         one_epoch(model, training, writer, loss_function, epoch, start_batch, optimizer, train=True)
         one_epoch(model, validation, writer, loss_function, epoch, start_batch, optimizer, train=False)

@@ -17,6 +17,8 @@ class Config():
     PADDING_IDX = 10999
     OUT_DIR = 'output'
     DATA_DIR = 'data'
-    CHECKPOINT_PATH = 'checkpoint.pth'
-    LOAD_MODEL = False
+    DRIVE_PATH = 'drive/MyDrive'
+    PRETRAINED_CHECKPOINT_PATH = 'pretrained_checkpoint.pth'
+    FINE_TUNED_CHECKPOINT_PATH = 'checkpoint.pth'
+    LOAD_MODEL = True
 
