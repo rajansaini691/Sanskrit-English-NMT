@@ -18,13 +18,13 @@ conda install pytorch torchvision torchaudio cudatoolkit=10.2 -c pytorch
 
 Install other dependencies
 ```
-conda install tensorboard
+conda install tensorboard pandas
 ```
 
 ### Pip
 Next, you need to install the following dependencies using `pip`.
 ```
-pip install subword_nmt datasets pdfminer pdfminer.six
+pip install subword_nmt datasets pdfminer pdfminer.six indic_transliteration
 ```
 
 ### Tasks 
