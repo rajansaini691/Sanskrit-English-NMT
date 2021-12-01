@@ -5,6 +5,7 @@
 # The other files in data/en-pali are intermediate and can be ignored. 	  #
 ###########################################################################
 
+pip install indic_transliteration
 mkdir -p data/
 mkdir -p data/en-pali
 cd data/en-pali
@@ -17,4 +18,4 @@ cp vinaya.tsv ../../../
 cp sutta.tsv ../../../
 cd ../../../../..
 echo "Cleaning and reformatting data..."
-python pali_tsv_to_corpora.py --corpus-root data/en-pali/ data/en-pali/sutta.tsv data/en-pali/vinaya.tsv
+python Sanskrit-English-NMT/pali_tsv_to_corpora.py --corpus-root data/en-pali/ data/en-pali/sutta.tsv data/en-pali/vinaya.tsv
