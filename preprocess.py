@@ -87,23 +87,30 @@ def create_token_dict(codes_file, dtype):
     next(codes_file)    # Skip first line (contains version info)
 
     token_dict = dict()
+    
+    token_dict['<EOS>'] = Config.EOS_TOKEN
+    token_dict['<BOS>'] = Config.BOS_TOKEN
 
     # Insert alphabet first
-    for i, x in enumerate(chain(ascii_lowercase, ascii_uppercase)):
-        token_dict[x] = i
-    for i, x in enumerate(chain(ascii_lowercase, ascii_uppercase)):
-        token_dict[x + '</w>'] = i
+    if dtype == 'source':
+        for i, x in enumerate(chain(ascii_lowercase, ascii_uppercase)):
+            token_dict[x] = len(token_dict)
+            token_dict[x + '</w>'] = len(token_dict)
+    
+    elif dtype == 'target':
+        for i, x in enumerate(range(0x0900, 0x097F)): #sanksrit unicode characters
+            token_dict[chr(x)] = len(token_dict)
+            token_dict[chr(x) + '</w>'] = len(token_dict)
 
     alphabet_len = len(token_dict.keys())
 
-    # FIXME Why are we writing this to a file?
-    with open(os.path.join(Config.OUT_DIR, f'vocabulary-{dtype}.txt'), 'w') as vocab:
-      # Insert bpe subwords
-      for i, line in enumerate(codes_file):
-          token = line.replace(' ', '').replace('\n', '')
-          token_dict[token] = i + alphabet_len
+    # Insert bpe subwords
+    for i, line in enumerate(codes_file):
+        token = line.replace(' ', '').replace('\n', '')
+        token_dict[token] = i + alphabet_len
 
-          vocab.write(f'{i+alphabet_len}\t{token}\t0\n')
+    token_dict['<SAN>'] = Config.SAN_TOKEN
+    token_dict['<PLI>'] = Config.PLI_TOKEN
 
     return token_dict
 
@@ -227,3 +234,37 @@ def load_marathi_dataset(path_to_en_mr_dir):
 
             return (corpus_to_tensors(eng_train_file, codes_file_eng, Config.OUT_DIR, "samanatar_en_mr_english_full"),
                     corpus_to_tensors(mr_train_file, codes_file_mr, Config.OUT_DIR, "samanatar_en_mr_marathi_full"))
+
+def load_pali_dataset(path_to_en_pali_dir):
+    """
+    Loads an english-marathi parallel dataset into two lists of aligned token vectors.
+    
+    Parameters:
+        path_to_en_mr_dir       Root of the english-marathi text. It should contain
+                                the files train.mr and train.en.
+    """
+    with open(os.path.join(path_to_en_pali_dir, "train.en"), "r") as eng_train_file:
+        with open(os.path.join(path_to_en_pali_dir, "train.pli"), "r") as pali_train_file:
+            print("Generating vocabulary for en-pali English...")
+            codes_file_eng = generate_vocab(eng_train_file, os.path.join(Config.OUT_DIR, "codes_file_eng"))
+            print("Generating vocabulary for en-pali Pali...")
+            codes_file_pali = generate_vocab(pali_train_file, os.path.join(Config.OUT_DIR, "codes_file_san"))
+
+            return (corpus_to_tensors(eng_train_file, codes_file_eng, Config.OUT_DIR, "en_pali_english_full"),
+                    corpus_to_tensors(pali_train_file, codes_file_pali, Config.OUT_DIR, "en_pali_pali_full"))
+            
+def create_multilingual_dataset(eng_san_eng_train, eng_san_san_train, eng_pali_eng_train, eng_pali_pali_train):
+    
+    # print(len(eng_pali_eng_train))
+    # print(len(eng_pali_pali_train))
+    
+    features = [torch.cat((torch.tensor([Config.SAN_TOKEN]), feature)) for feature in eng_san_eng_train] #add san token (10998)
+    features.extend([torch.cat((torch.tensor([Config.PLI_TOKEN]), feature)) for feature in eng_pali_eng_train]) #add pali token (10997)    
+    
+    labels = eng_san_san_train
+    labels.extend(eng_pali_pali_train)
+    
+    print(len(features))
+    print(len(labels))
+    
+    return features, labels

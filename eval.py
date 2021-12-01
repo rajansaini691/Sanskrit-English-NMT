@@ -115,7 +115,13 @@ def convertToText(sequence):
         if byte == Config.PADDING_IDX:
             return translation
         position = val_list.index(byte)
-        translation.append(key_list[position])
+        
+        word = key_list[position]
+
+        if word[-4:] == '</w>': 
+            translation.append(word[:-4] + " ")
+        else:
+            translation.append(word)
                 
     return translation
 
@@ -171,16 +177,20 @@ if __name__ == "__main__":
             references.append(reference['translation']['sn'])
 
     with torch.no_grad():
-        for index in range(10):#len(eng_test)):
+        for index in range(len(eng_test[:10])):
             best_score = beamSearch(eng_test[index], 3, model)
             translation = convertToText(best_score)            
-            translations.append(" ".join(translation[1:]))
-
+            translations.append("".join(translation[1:]))
+            
+            bleu = metrics.BLEU()
+            res = bleu.sentence_score(translations[index], [references[index]])
+            print(f"BLEU score: ", res)
+            
             if index % 10 == 0:
                 print(f'[Testing] at {index}')
 
-    # print('trans', translations)
-    # print('refs', references[:10])
+    print('trans', translations)
+    print('refs', references[:10])
     bleu = metrics.BLEU()
     res = bleu.corpus_score(translations, [references])
     print(f"BLEU score: ", res)

@@ -21,4 +21,9 @@ class Config():
     PRETRAINED_CHECKPOINT_PATH = 'pretrained_checkpoint.pth'
     FINE_TUNED_CHECKPOINT_PATH = 'checkpoint.pth'
     LOAD_MODEL = True
-
+    MULTILINGUAL = True
+    SAN_TOKEN = 10998
+    PLI_TOKEN = 10997
+    BOS_TOKEN = 1
+    EOS_TOKEN = 0
+    

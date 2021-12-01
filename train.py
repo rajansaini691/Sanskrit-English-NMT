@@ -12,7 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 from datasets import load_dataset
 from model import Transformer
-from preprocess import convert_itihasa_dataset_to_tensors, load_marathi_dataset
+from preprocess import convert_itihasa_dataset_to_tensors, load_marathi_dataset, load_pali_dataset, create_multilingual_dataset
 from config import Config
 
 def get_batch_seq(batch_num, dataloader):
@@ -22,6 +22,7 @@ def get_batch_seq(batch_num, dataloader):
     
     features = dataloader[0][batch_num: (batch_num+Config.BATCH_SIZE)]
     labels = dataloader[1][batch_num: (batch_num+Config.BATCH_SIZE)]
+    
     
     labels = [torch.cat((torch.tensor([1]), label)) for label in labels] #add bos token (1)
     labels = [torch.cat((label, torch.tensor([0]))) for label in labels] #add eos token (0)
@@ -203,7 +204,11 @@ def train():
     
     # eng_train, mar_train=load_marathi_dataset(os.path.join(Config.DATA_DIR, "en-mr"))
 
-    eng_train, san_train, eng_val, san_val, eng_test, san_test = convert_itihasa_dataset_to_tensors(training_data, validation_data, test_data)
+    eng_san_eng_train, eng_san_san_train, eng_san_eng_val, eng_san_san_val, eng_test, san_test = convert_itihasa_dataset_to_tensors(training_data, validation_data, test_data)
+    eng_pali_eng_train, eng_pali_pali_train =  load_pali_dataset(os.path.join(Config.DATA_DIR, 'en-pali'))
+    eng_train, multi_train = create_multilingual_dataset(eng_san_eng_train, eng_san_san_train, eng_pali_eng_train, eng_pali_pali_train)
+    #create multingual dataset
+    
     # load_marathi_dataset(os.path.join(Config.DATA_DIR, "en-mr"))
 
     model = Transformer(
@@ -238,8 +243,8 @@ def train():
 
         # TODO Use the returned values from convert_itihasa_dataset_to_tensors() rather
         # than loading from disk like this
-        training = (eng_train, san_train)
-        validation = (eng_val, san_val)
+        training = (eng_train, multi_train)
+        validation = (eng_san_eng_val, eng_san_san_val)
 
         one_epoch(model, training, writer, loss_function, epoch, start_batch, optimizer, train=True)
         one_epoch(model, validation, writer, loss_function, epoch, start_batch, optimizer, train=False)
