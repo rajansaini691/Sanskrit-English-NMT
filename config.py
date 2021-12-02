@@ -14,7 +14,6 @@ class Config():
     NUM_LAYERS = 3
     DROPOUT = 0.1
     DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    PADDING_IDX = 10999
     OUT_DIR = 'output'
     DATA_DIR = 'data'
     DRIVE_PATH = 'drive/MyDrive'
@@ -22,8 +21,10 @@ class Config():
     FINE_TUNED_CHECKPOINT_PATH = 'checkpoint.pth'
     LOAD_MODEL = True
     MULTILINGUAL = True
+    PADDING_IDX = 10999
     SAN_TOKEN = 10998
     PLI_TOKEN = 10997
+    UNK_TOKEN = 10996
     BOS_TOKEN = 1
     EOS_TOKEN = 0
     

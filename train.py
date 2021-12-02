@@ -166,9 +166,9 @@ def one_epoch(model, dataloader, writer, criterion, epoch, start_batch, optimize
         running_loss += loss.item()
 
         # update tensorboard and save model
-        if update == 10:    # every 10 mini-batches
-            running_avg = running_loss / 10
-            graph = ''
+        if update == 100:    # every 10 mini-batches
+            running_avg = running_loss / 100
+            # graph = ''
             if train:
                 checkpoint = {
                     "epoch":epoch,
@@ -176,14 +176,26 @@ def one_epoch(model, dataloader, writer, criterion, epoch, start_batch, optimize
                     "model_state":model.state_dict(),
                     "optim_state":optimizer.state_dict()
                 }
-                torch.save(checkpoint, os.path.join(Config.OUT_DIR, Config.FINE_TUNED_CHECKPOINT_PATH))
-                graph = 'training loss'
-            else:
-                graph = 'validation loss'
+                torch.save(checkpoint, os.path.join(Config.DRIVE_PATH, Config.FINE_TUNED_CHECKPOINT_PATH))
+                
+
+                if os.path.exists(os.path.join(Config.DRIVE_PATH, 'train_loss_values.npy')):
+                  train_loss_values = np.load(os.path.join(Config.DRIVE_PATH, 'train_loss_values.npy'))
+                  train_loss_values = np.append(train_loss_values, running_avg)
+                  train_loss_values = np.save(os.path.join(Config.DRIVE_PATH, 'train_loss_values.npy'), train_loss_values)
+                else:
+                  train_loss_values = np.array([running_avg])
+                  train_loss_values = np.save(os.path.join(Config.DRIVE_PATH, 'train_loss_values.npy'), train_loss_values)
             
-            writer.add_scalar(graph,
-                            running_avg,
-                            epoch * len(dataloader) + index)
+            else:
+                if os.path.exists(os.path.join(Config.DRIVE_PATH, 'val_loss_values.npy')):
+                  val_loss_values = np.load(os.path.join(Config.DRIVE_PATH, 'val_loss_values.npy'))
+                  val_loss_values = np.append(val_loss_values, running_avg)
+                  val_loss_values = np.save(os.path.join(Config.DRIVE_PATH, 'val_loss_values.npy'), val_loss_values)
+                else:
+                  val_loss_values = np.array([running_avg])
+                  val_loss_values = np.save(os.path.join(Config.DRIVE_PATH, 'val_loss_values.npy'), val_loss_values)
+            
             print(f"[Loss] {running_avg}")
             running_loss = 0.0
 
@@ -205,7 +217,9 @@ def train():
     # eng_train, mar_train=load_marathi_dataset(os.path.join(Config.DATA_DIR, "en-mr"))
 
     eng_san_eng_train, eng_san_san_train, eng_san_eng_val, eng_san_san_val, eng_test, san_test = convert_itihasa_dataset_to_tensors(training_data, validation_data, test_data)
+    print('san', len(eng_san_eng_train), len(eng_san_san_train))
     eng_pali_eng_train, eng_pali_pali_train =  load_pali_dataset(os.path.join(Config.DATA_DIR, 'en-pali'))
+    print('pali', len(eng_pali_eng_train), len(eng_pali_pali_train))
     eng_train, multi_train = create_multilingual_dataset(eng_san_eng_train, eng_san_san_train, eng_pali_eng_train, eng_pali_pali_train)
     #create multingual dataset
     
@@ -224,7 +238,7 @@ def train():
     start_batch = 0
 
     if Config.LOAD_MODEL:
-        checkpoint = torch.load(os.path.join(Config.OUT_DIR, Config.PRETRAINED_CHECKPOINT_PATH),
+        checkpoint = torch.load(os.path.join(Config.DRIVE_PATH, Config.PRETRAINED_CHECKPOINT_PATH),
                                 map_location=Config.DEVICE)
 
         start_batch = checkpoint["batch"]

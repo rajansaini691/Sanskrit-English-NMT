@@ -111,6 +111,7 @@ def create_token_dict(codes_file, dtype):
 
     token_dict['<SAN>'] = Config.SAN_TOKEN
     token_dict['<PLI>'] = Config.PLI_TOKEN
+    token_dict['<UNK>'] = Config.UNK_TOKEN
 
     return token_dict
 
@@ -123,7 +124,7 @@ def create_tensor_from_sentence(sentence, token_dict):
         try:
             sentence_as_indices += [token_dict[token]]
         except KeyError as e:
-            pass
+            sentence_as_indices += [token_dict['<UNK>']]
     return torch.tensor(sentence_as_indices, dtype=torch.long)
 
 def create_tensors(tokenized_corpus_file, token_dict):
@@ -134,10 +135,7 @@ def create_tensors(tokenized_corpus_file, token_dict):
     tokenized_corpus_file = open(tokenized_corpus_file.name, 'r')
     data = []
     for line in tokenized_corpus_file:
-        try:
-            data.append(create_tensor_from_sentence(line, token_dict))
-        except ValueError:
-            pass
+        data.append(create_tensor_from_sentence(line, token_dict))
     return data
 
 # TODO Accept the whole itihasa json and do the train/val/test split inside here
@@ -255,20 +253,20 @@ def load_pali_dataset(path_to_en_pali_dir):
             
 def create_multilingual_dataset(eng_san_eng_train, eng_san_san_train, eng_pali_eng_train, eng_pali_pali_train):
     
-    # print(len(eng_pali_eng_train))
-    # print(len(eng_pali_pali_train))
     
     features = [torch.cat((torch.tensor([Config.SAN_TOKEN]), feature)) for feature in eng_san_eng_train] #add san token (10998)
-    features = features[:75000]
+    # features = features[:75000]
+    print(len(features))
 
     features.extend([torch.cat((torch.tensor([Config.PLI_TOKEN]), feature)) for feature in eng_pali_eng_train]) #add pali token (10997)    
-    features = features[:27100]
+    # features = features[:27100]
 
     labels = eng_san_san_train
-    labels = labels[:75000]
+    print(len(labels))
+    # labels = labels[:75000]
     
     labels.extend(eng_pali_pali_train)
-    labels = labels[:27100]
+    # labels = labels[:27100]
     
     print(len(features))
     print(len(labels))
