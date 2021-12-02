@@ -259,10 +259,16 @@ def create_multilingual_dataset(eng_san_eng_train, eng_san_san_train, eng_pali_e
     # print(len(eng_pali_pali_train))
     
     features = [torch.cat((torch.tensor([Config.SAN_TOKEN]), feature)) for feature in eng_san_eng_train] #add san token (10998)
+    features = features[:75000]
+
     features.extend([torch.cat((torch.tensor([Config.PLI_TOKEN]), feature)) for feature in eng_pali_eng_train]) #add pali token (10997)    
-    
+    features = features[:27100]
+
     labels = eng_san_san_train
+    labels = labels[:75000]
+    
     labels.extend(eng_pali_pali_train)
+    labels = labels[:27100]
     
     print(len(features))
     print(len(labels))
