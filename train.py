@@ -220,10 +220,7 @@ def train():
     print('san', len(eng_san_eng_train), len(eng_san_san_train))
     eng_pali_eng_train, eng_pali_pali_train =  load_pali_dataset(os.path.join(Config.DATA_DIR, 'en-pali'))
     print('pali', len(eng_pali_eng_train), len(eng_pali_pali_train))
-    eng_train, multi_train = create_multilingual_dataset(eng_san_eng_train, eng_san_san_train, eng_pali_eng_train, eng_pali_pali_train)
-    #create multingual dataset
-    
-    # load_marathi_dataset(os.path.join(Config.DATA_DIR, "en-mr"))
+    multi_train, eng_train = create_multilingual_dataset(eng_san_eng_train, eng_san_san_train, eng_pali_eng_train, eng_pali_pali_train)
 
     model = Transformer(
         Config.SRC_VOCAB_SIZE,
@@ -257,12 +254,14 @@ def train():
 
         # TODO Use the returned values from convert_itihasa_dataset_to_tensors() rather
         # than loading from disk like this
-        training = (eng_train, multi_train)
-        validation = (eng_san_eng_val, eng_san_san_val)
+        training = (multi_train, eng_train)
+        validation = (eng_san_san_val, eng_san_eng_val)
 
         one_epoch(model, training, writer, loss_function, epoch, start_batch, optimizer, train=True)
         one_epoch(model, validation, writer, loss_function, epoch, start_batch, optimizer, train=False)
-
+        
+        training = shuffled_copies(training[0], training[1])
+        
         start_batch = 0
 
 if __name__ == '__main__':

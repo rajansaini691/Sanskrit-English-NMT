@@ -254,11 +254,11 @@ def load_pali_dataset(path_to_en_pali_dir):
 def create_multilingual_dataset(eng_san_eng_train, eng_san_san_train, eng_pali_eng_train, eng_pali_pali_train):
     
     
-    features = [torch.cat((torch.tensor([Config.SAN_TOKEN]), feature)) for feature in eng_san_eng_train] #add san token (10998)
-    features.extend([torch.cat((torch.tensor([Config.PLI_TOKEN]), feature)) for feature in eng_pali_eng_train]) #add pali token (10997)    
+    features = [torch.cat((torch.tensor([Config.SAN_TOKEN]), feature)) for feature in eng_san_san_train] #add san token (10998)
+    features.extend([torch.cat((torch.tensor([Config.PLI_TOKEN]), feature)) for feature in eng_pali_pali_train]) #add pali token (10997)    
 
-    labels = eng_san_san_train    
-    labels.extend(eng_pali_pali_train)
+    labels = eng_san_eng_train    
+    labels.extend(eng_pali_eng_train)
     
     assert(len(features) == len(labels))
     
