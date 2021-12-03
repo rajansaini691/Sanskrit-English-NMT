@@ -32,12 +32,14 @@ def beamSearch(sentence, k, model):
     best_scores.append((1, np.ones((1, 1))))
     
     # encode to get encoder output
+    sentence = sentence.reshape([max_sequence_length, 1])
+
+    src_pad_mask = model.make_len_mask(sentence)
+    
     src = model.encoder(sentence)
     src = model.pos_encoder(src)
     
-    # encoder_input = torch.reshape(sentence, (1, -1))
-    encoded = model.transformer.encoder(src.to(
-        Config.DEVICE))
+    encoded = model.transformer.encoder(src.to(Config.DEVICE))
     
 
     for i in range(1, max_sequence_length):
@@ -56,23 +58,37 @@ def beamSearch(sentence, k, model):
                 candidates = torch.from_numpy(
                     np.array(candidate, dtype=int))
                 
+                trg_pad_mask = model.make_len_mask(candidates)
+                
                 trg = model.decoder(candidates)
                 trg = model.pos_decoder(trg)
-
+                
                 # print('trg', trg.shape)
                 output = model.transformer.decoder(trg.to(Config.DEVICE),
-                                                   encoded)
+                                                   encoded, 
+                                                   memory_key_padding_mask=src_pad_mask,
+                                                   tgt_key_padding_mask=trg_pad_mask)
+                
+                output = model.fc_out(output)
+                
+                # output = output.transpose(0, 1).transpose(1, 2)
                 # print(output)
-                predicted_id = torch.nn.functional.log_softmax(output, dim=-1)
-                softmaxes = predicted_id[-1].to('cpu')[-1]
+                predicted_id = torch.nn.functional.softmax(output, dim=-1)
+                # predicted_id = output.argmax(2)[-1].item()
+                # print(predicted_id.shape)
+                # print(predicted_id)
+                softmaxes = predicted_id[:, -1].to('cpu')[-1]
+                # print(softmaxes.shape)
+                # print(softmaxes)
+           
                 indicies = np.argpartition(softmaxes.to('cpu'), (k*-1))[(k*-1):]
-
+                # print(indicies)
                 #add potential new candidates to priority queue
                 for index in indicies:
                     sm_score = softmaxes[index]
 
                     new_candidate = np.append(candidates, [[index]], axis=0)
-                    new_score = np.add(score, sm_score)
+                    new_score = np.multiply(score, sm_score)
                     
                     if not new_seqs.full():
                         new_seqs.put((new_score, list(new_candidate)))
@@ -177,14 +193,28 @@ if __name__ == "__main__":
             references.append(reference['translation']['sn'])
 
     with torch.no_grad():
-        for index in range(len(eng_test[:10])):
-            best_score = beamSearch(eng_test[index], 3, model)
+        for index in range(len(eng_train[:10])):
+            
+            best_score = beamSearch(eng_train[index], 3, model)
+            # memory = model.transformer.encoder(model.pos_encoder(model.encoder(eng_test[index])))
+
+            # out_indexes = [1, ]
+
+            # for i in range(50):
+            #     trg_tensor = torch.LongTensor(out_indexes).unsqueeze(1).to(Config.DEVICE)
+
+            #     output = model.fc_out(model.transformer.decoder(model.pos_decoder(model.decoder(trg_tensor)), memory))
+            #     out_token = output.argmax(2)[-1].item()
+            #     out_indexes.append(out_token)
+            #     if out_token == 0:
+            #         break
+            # print(out_indexes)
             translation = convertToText(best_score)            
             translations.append("".join(translation[1:]))
             
-            bleu = metrics.BLEU()
-            res = bleu.sentence_score(translations[index], [references[index]])
-            print(f"BLEU score: ", res)
+            # bleu = metrics.BLEU()
+            # res = bleu.sentence_score(translations[index], [references[index]])
+            # print(f"BLEU score: ", res)
             
             if index % 10 == 0:
                 print(f'[Testing] at {index}')
