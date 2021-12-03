@@ -72,9 +72,10 @@ def tokenize_dataset(infile, codes_file, prefix=""):
     codes_file.seek(0)
 
     bpe = BPE(codes_file)
+    tokenized_corpus = []
     for line in infile:
         tokenized_line = bpe.process_line(line)
-        tokenized_corpus.writelines(tokenized_line)
+        tokenized_corpus.append(tokenized_line)
     return tokenized_corpus
 
 # TODO Rename dtype to prefix, document parameters
@@ -127,14 +128,13 @@ def create_tensor_from_sentence(sentence, token_dict):
             sentence_as_indices += [token_dict['<UNK>']]
     return torch.tensor(sentence_as_indices, dtype=torch.long)
 
-def create_tensors(tokenized_corpus_file, token_dict):
+def create_tensors(tokenized_corpus, token_dict):
     """
     Create pytorch-processable dataset from corpus
     (return list of seq2seq tensors)
     """
-    tokenized_corpus_file = open(tokenized_corpus_file.name, 'r')
     data = []
-    for line in tokenized_corpus_file:
+    for line in tokenized_corpus:
         data.append(create_tensor_from_sentence(line, token_dict))
     return data
 
