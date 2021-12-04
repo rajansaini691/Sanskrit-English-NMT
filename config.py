@@ -18,8 +18,8 @@ class Config():
     DATA_DIR = 'data'
     DRIVE_PATH = 'drive/MyDrive'
     PRETRAINED_CHECKPOINT_PATH = 'pretrained_checkpoint.pth'
-    FINE_TUNED_CHECKPOINT_PATH = 'checkpoint.pth'
-    LOAD_MODEL = True
+    FINE_TUNED_CHECKPOINT_PATH = 'san_to_eng_checkpoint.pth'
+    LOAD_MODEL = False
     MULTILINGUAL = True
     PADDING_IDX = 10999
     SAN_TOKEN = 10998

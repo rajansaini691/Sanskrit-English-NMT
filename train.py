@@ -104,7 +104,7 @@ def shuffled_copies(a, b):
     """
     assert len(a) == len(b)
     p = np.random.permutation(len(a))
-    return a[p], b[p]
+    return [a[i] for i in p], [b[i] for i in p]
 
 def one_epoch(model, dataloader, writer, criterion, epoch, start_batch, optimizer, train):
     """
@@ -254,14 +254,15 @@ def train():
 
         # TODO Use the returned values from convert_itihasa_dataset_to_tensors() rather
         # than loading from disk like this
-        training = (multi_train, eng_train)
+
+        training = shuffled_copies(multi_train, eng_train)
+
+        # training = (multi_train, eng_train)
         validation = (eng_san_san_val, eng_san_eng_val)
 
         one_epoch(model, training, writer, loss_function, epoch, start_batch, optimizer, train=True)
         one_epoch(model, validation, writer, loss_function, epoch, start_batch, optimizer, train=False)
-        
-        training = shuffled_copies(training[0], training[1])
-        
+                
         start_batch = 0
 
 if __name__ == '__main__':
